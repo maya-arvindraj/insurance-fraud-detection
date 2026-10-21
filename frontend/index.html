@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Insurance Claim Fraud Detection System</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+<!-- Top Bar -->
+<header class="bg-slate-900 text-white shadow">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <i data-lucide="shield-alert" class="w-6 h-6 text-amber-400"></i>
+      <h1 class="text-lg font-semibold">Insurance Claim Fraud Detection System</h1>
+    </div>
+    <div id="health" class="flex items-center gap-2 text-sm">
+      <span id="healthDot" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+      <span id="healthText">Checking API…</span>
+    </div>
+  </div>
+  <nav class="max-w-7xl mx-auto px-4 flex gap-1 overflow-x-auto" id="tabs">
+    <button data-tab="overview" class="tab-btn px-4 py-2 text-sm flex items-center gap-2 whitespace-nowrap"><i data-lucide="bar-chart-3" class="w-4 h-4"></i>Overview</button>
+    <button data-tab="file" class="tab-btn px-4 py-2 text-sm flex items-center gap-2 whitespace-nowrap"><i data-lucide="file-plus" class="w-4 h-4"></i>File New Claim</button>
+    <button data-tab="triage" class="tab-btn px-4 py-2 text-sm flex items-center gap-2 whitespace-nowrap"><i data-lucide="list-checks" class="w-4 h-4"></i>Fraud Triage</button>
+    <button data-tab="invest" class="tab-btn px-4 py-2 text-sm flex items-center gap-2 whitespace-nowrap"><i data-lucide="search-check" class="w-4 h-4"></i>Investigation &amp; Approval</button>
+  </nav>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 py-6">
+  <div id="globalAlert" class="hidden mb-4"></div>
+
+  <!-- Tab 1: Overview -->
+  <section id="tab-overview" class="tab-panel">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-semibold">Overview &amp; Analytics</h2>
+      <button onclick="loadAnalytics()" class="text-sm px-3 py-1.5 bg-white border rounded hover:bg-slate-50 flex items-center gap-1"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh</button>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white rounded-lg shadow-sm border p-4"><div class="flex justify-between text-slate-500 text-sm">Total Claims<i data-lucide="files" class="w-5 h-5"></i></div><div id="cTotal" class="text-3xl font-bold mt-2">—</div></div>
+      <div class="bg-white rounded-lg shadow-sm border p-4"><div class="flex justify-between text-red-500 text-sm">Flagged for Fraud<i data-lucide="flag" class="w-5 h-5"></i></div><div id="cFlagged" class="text-3xl font-bold mt-2 text-red-600">—</div></div>
+      <div class="bg-white rounded-lg shadow-sm border p-4"><div class="flex justify-between text-amber-600 text-sm">Under Investigation<i data-lucide="search" class="w-5 h-5"></i></div><div id="cInvest" class="text-3xl font-bold mt-2 text-amber-600">—</div></div>
+      <div class="bg-white rounded-lg shadow-sm border p-4"><div class="flex justify-between text-slate-500 text-sm">Total Dollar Exposure<i data-lucide="dollar-sign" class="w-5 h-5"></i></div><div id="cExposure" class="text-3xl font-bold mt-2">—</div></div>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border mt-6">
+      <div class="px-4 py-3 border-b font-semibold flex items-center gap-2"><i data-lucide="building-2" class="w-5 h-5 text-slate-500"></i>High-Risk Facilities</div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="bg-slate-50 text-slate-500 text-left"><tr><th class="px-4 py-2">Facility</th><th class="px-4 py-2">Claim Volume</th><th class="px-4 py-2">Fraud Flags</th></tr></thead>
+          <tbody id="facilityBody"><tr><td colspan="3" class="px-4 py-6 text-center text-slate-400">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab 2: File Claim -->
+  <section id="tab-file" class="tab-panel hidden">
+    <h2 class="text-xl font-semibold mb-4">File New Claim</h2>
+    <div id="claimResult" class="mb-4"></div>
+    <form id="claimForm" class="bg-white rounded-lg shadow-sm border p-5 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl">
+      <label class="text-sm font-medium">Customer ID
+        <input name="customer_id" type="number" min="1" step="1" required class="mt-1 w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="1"></label>
+      <label class="text-sm font-medium">Policy ID
+        <input name="policy_id" type="number" min="1" step="1" required class="mt-1 w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="1"></label>
+      <label class="text-sm font-medium">Claim Amount (USD)
+        <input name="claim_amount" type="number" min="0.01" step="0.01" required class="mt-1 w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="15000.00"></label>
+      <label class="text-sm font-medium">Claim Type
+        <select name="claim_type" required class="mt-1 w-full border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <option value="">Select type…</option><option>Medical</option><option>Auto</option><option>Property</option><option>Life</option><option>Liability</option>
+        </select></label>
+      <label class="text-sm font-medium md:col-span-2">Facility ID
+        <input name="facility_id" type="number" min="1" step="1" required class="mt-1 w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="3"></label>
+      <label class="text-sm font-medium md:col-span-2">Description
+        <textarea name="description" rows="4" required class="mt-1 w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Describe the incident…"></textarea></label>
+      <div class="md:col-span-2">
+        <button id="submitBtn" type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded font-medium flex items-center gap-2"><i data-lucide="send" class="w-4 h-4"></i>Submit Claim</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Tab 3: Triage -->
+  <section id="tab-triage" class="tab-panel hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-semibold">Fraud Triage Queue</h2>
+      <button onclick="loadTriage()" class="text-sm px-3 py-1.5 bg-white border rounded hover:bg-slate-50 flex items-center gap-1"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh</button>
+    </div>
+    <div class="bg-white rounded-lg shadow-sm border overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-500 text-left"><tr><th class="px-4 py-2">Claim ID</th><th class="px-4 py-2">Customer</th><th class="px-4 py-2">Amount</th><th class="px-4 py-2">Rule Triggered</th><th class="px-4 py-2">Action</th></tr></thead>
+        <tbody id="triageBody"><tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Tab 4: Investigation -->
+  <section id="tab-invest" class="tab-panel hidden">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xl font-semibold">Investigation &amp; Approval</h2>
+      <button onclick="loadInvest()" class="text-sm px-3 py-1.5 bg-white border rounded hover:bg-slate-50 flex items-center gap-1"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Refresh</button>
+    </div>
+    <div id="investList" class="grid grid-cols-1 lg:grid-cols-2 gap-4"><p class="text-slate-400">Loading…</p></div>
+  </section>
+</main>
+
+<!-- Assign Modal -->
+<div id="modal" class="hidden fixed inset-0 bg-black/50 z-50 items-center justify-center p-4">
+  <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-5">
+    <h3 class="text-lg font-semibold mb-1">Assign Investigator</h3>
+    <p class="text-sm text-slate-500 mb-4">Claim <span id="modalClaim" class="font-mono font-medium"></span></p>
+    <label class="text-sm font-medium">Investigator
+      <select id="investigatorSelect" class="mt-1 w-full border rounded px-3 py-2 bg-white"></select></label>
+    <div id="modalErr" class="hidden mt-3 text-sm text-red-600"></div>
+    <div class="flex justify-end gap-2 mt-5">
+      <button onclick="closeModal()" class="px-4 py-2 border rounded hover:bg-slate-50">Cancel</button>
+      <button id="assignBtn" onclick="confirmAssign()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">Assign</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+const FALLBACK_INVESTIGATORS = [
+  {id: 1, name: "Investigator 1"}, {id: 2, name: "Investigator 2"},
+  {id: 3, name: "Investigator 3"}
+];
+let currentClaimId = null;
+
+/* ---------- helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pick = (o, ...keys) => { for (const k of keys) if (o && o[k] !== undefined && o[k] !== null) return o[k]; return undefined; };
+const money = n => (isNaN(Number(n)) ? "—" : Number(n).toLocaleString("en-US", {style: "currency", currency: "USD"}));
+const icons = () => window.lucide && lucide.createIcons();
+
+function parseStrictInt(val) {
+  if (typeof val === "number") return Math.trunc(val);
+  const match = String(val || "").match(/\d+/);
+  return match ? parseInt(match[0], 10) : NaN;
+}
+
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: {"Content-Type": "application/json"}, ...opts
+  });
+  let data = null;
+  try { data = await res.json(); } catch (_) {}
+  if (!res.ok) {
+    let msg = data && (data.detail || data.message || data.error);
+    if (Array.isArray(msg)) msg = msg.map(m => m.msg || JSON.stringify(m)).join("; ");
+    if (msg && typeof msg === "object") msg = JSON.stringify(msg);
+    const err = new Error(msg || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+const listOf = d => Array.isArray(d) ? d : (d && (d.claims || d.items || d.results || d.data)) || [];
+
+function showAlert(type, html) {
+  const styles = {
+    error: "bg-red-50 border-red-300 text-red-800",
+    success: "bg-green-50 border-green-300 text-green-800",
+    info: "bg-blue-50 border-blue-300 text-blue-800"
+  };
+  const el = $("globalAlert");
+  el.className = `mb-4 border rounded px-4 py-3 flex items-start justify-between gap-3 ${styles[type]}`;
+  el.innerHTML = `<div>${html}</div><button onclick="this.parentElement.classList.add('hidden')" class="font-bold">✕</button>`;
+  el.scrollIntoView({behavior: "smooth", block: "nearest"});
+  clearTimeout(showAlert.t);
+  if (type !== "error") showAlert.t = setTimeout(() => el.classList.add("hidden"), 6000);
+}
+
+/* ---------- tabs ---------- */
+function setTab(name) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("hidden", p.id !== "tab-" + name));
+  document.querySelectorAll(".tab-btn").forEach(b => {
+    const on = b.dataset.tab === name;
+    b.className = "tab-btn px-4 py-2 text-sm flex items-center gap-2 whitespace-nowrap border-b-2 " +
+      (on ? "border-amber-400 text-white" : "border-transparent text-slate-400 hover:text-white");
+  });
+  $("globalAlert").classList.add("hidden");
+  if (name === "overview") loadAnalytics();
+  if (name === "triage") loadTriage();
+  if (name === "invest") loadInvest();
+}
+$("tabs").addEventListener("click", e => { const b = e.target.closest(".tab-btn"); if (b) setTab(b.dataset.tab); });
+
+/* ---------- health ---------- */
+async function checkHealth() {
+  const dot = $("healthDot"), txt = $("healthText");
+  for (const p of ["/health", "/api/health", "/docs", "/"]) {
+    try {
+      const r = await fetch(API + p);
+      if (r.ok || r.status === 404) { dot.className = "w-2.5 h-2.5 rounded-full bg-green-400"; txt.textContent = "API Online"; return; }
+    } catch (_) {}
+  }
+  dot.className = "w-2.5 h-2.5 rounded-full bg-red-500"; txt.textContent = "API Offline";
+}
+
+/* ---------- overview ---------- */
+async function loadAnalytics() {
+  try {
+    let d = null;
+    try { d = await api("/api/analytics/dashboard"); }
+    catch (_) { d = await api("/api/analytics"); }
+
+    $("cTotal").textContent = (pick(d, "total_claims", "totalClaims") ?? "—").toLocaleString?.() ?? "—";
+    $("cFlagged").textContent = pick(d, "flagged_claims", "flagged_for_fraud", "flagged", "flaggedClaims") ?? "—";
+    $("cInvest").textContent = pick(d, "under_investigation", "investigating", "underInvestigation") ?? "—";
+    $("cExposure").textContent = money(pick(d, "total_exposure", "total_dollar_exposure", "totalExposure"));
+    const fac = pick(d, "high_risk_facilities", "facilities", "highRiskFacilities") || [];
+    $("facilityBody").innerHTML = fac.length ? fac.map(f => {
+      const flags = pick(f, "fraud_flags", "flags", "flagged_claims", "fraudFlags") ?? 0;
+      return `<tr class="border-t hover:bg-slate-50">
+        <td class="px-4 py-2 font-medium">${esc(pick(f, "facility_name", "name", "facility_id", "facility"))}</td>
+        <td class="px-4 py-2">${esc(pick(f, "claim_volume", "claims", "volume", "total_claims") ?? 0)}</td>
+        <td class="px-4 py-2"><span class="px-2 py-0.5 rounded-full text-xs font-semibold ${flags > 0 ? "bg-red-100 text-red-700" : "bg-slate-100 text-slate-600"}">${esc(flags)}</span></td></tr>`;
+    }).join("") : `<tr><td colspan="3" class="px-4 py-6 text-center text-slate-400">No high-risk facilities recorded.</td></tr>`;
+  } catch (e) {
+    $("facilityBody").innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-red-600">Failed to load analytics: ${esc(e.message)}</td></tr>`;
+  }
+}
+
+/* ---------- file claim ---------- */
+$("claimForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const raw = Object.fromEntries(f.entries());
+
+  const body = {
+    customer_id: parseStrictInt(raw.customer_id),
+    policy_id: parseStrictInt(raw.policy_id),
+    claim_amount: parseFloat(raw.claim_amount),
+    claim_type: String(raw.claim_type || ""),
+    facility_id: parseStrictInt(raw.facility_id),
+    description: String(raw.description || "")
+  };
+
+  if (isNaN(body.customer_id) || isNaN(body.policy_id) || isNaN(body.facility_id)) {
+    $("claimResult").innerHTML = `<div class="bg-red-50 border border-red-300 text-red-800 rounded px-4 py-3">Customer ID, Policy ID, and Facility ID must be numeric integers.</div>`;
+    return;
+  }
+
+  const btn = $("submitBtn"); btn.disabled = true; btn.classList.add("opacity-60");
+  const out = $("claimResult");
+  try {
+    const d = await api("/api/claims", {method: "POST", body: JSON.stringify(body)});
+    const id = pick(d, "claim_id", "id") ?? "";
+    const status = String(pick(d, "status") ?? "").toUpperCase();
+    const flagged = status.includes("FLAG") || pick(d, "flagged", "is_flagged", "fraud_flag") === true;
+    if (flagged) {
+      const rule = pick(d, "rule_triggered", "rule", "reason", "flag_reason") ?? "Claim Exceeds Policy Coverage";
+      out.innerHTML = `<div class="bg-red-600 text-white rounded px-4 py-3 flex items-start gap-3">
+        <i data-lucide="alert-triangle" class="w-5 h-5 mt-0.5"></i>
+        <div><div class="font-semibold">Claim #${esc(id)} automatically FLAGGED for fraud review</div>
+        <div class="text-sm opacity-90">Rule triggered: ${esc(Array.isArray(rule) ? rule.join(", ") : rule)}</div></div></div>`;
+    } else {
+      out.innerHTML = `<div class="inline-flex items-center gap-2 bg-green-100 text-green-800 border border-green-300 rounded-full px-4 py-2 font-medium">
+        <i data-lucide="check-circle-2" class="w-5 h-5"></i>Claim #${esc(id)} Successfully Submitted</div>`;
+    }
+    e.target.reset(); icons();
+  } catch (err) {
+    out.innerHTML = `<div class="bg-red-50 border border-red-300 text-red-800 rounded px-4 py-3">Submission failed: ${esc(err.message)}</div>`;
+  } finally { btn.disabled = false; btn.classList.remove("opacity-60"); }
+});
+
+/* ---------- triage ---------- */
+async function loadTriage() {
+  const body = $("triageBody");
+  try {
+    let rows = [];
+    try {
+      rows = listOf(await api("/api/claims/flagged"));
+    } catch (_) {
+      rows = listOf(await api("/api/claims?status=FLAGGED"));
+    }
+    rows = rows.filter(c => !c.status || String(c.status).toUpperCase().includes("FLAG"));
+
+    body.innerHTML = rows.length ? rows.map(c => {
+      const id = pick(c, "claim_id", "id");
+      const rule = pick(c, "rule_triggered", "rule_name", "rule", "flag_reason", "reason", "rules") ?? "Suspicious Claim Activity";
+      return `<tr class="border-t hover:bg-slate-50">
+        <td class="px-4 py-2 font-mono">#${esc(id)}</td>
+        <td class="px-4 py-2">${esc(pick(c, "customer_name", "customer_id", "customer"))}</td>
+        <td class="px-4 py-2">${money(pick(c, "claim_amount", "amount"))}</td>
+        <td class="px-4 py-2"><span class="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded">${esc(Array.isArray(rule) ? rule.join(", ") : rule)}</span></td>
+        <td class="px-4 py-2"><button data-id="${esc(id)}" class="assign-btn bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1.5 rounded flex items-center gap-1"><i data-lucide="user-plus" class="w-3.5 h-3.5"></i>Assign Investigator</button></td></tr>`;
+    }).join("") : `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-400">No flagged claims in queue.</td></tr>`;
+    icons();
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-red-600">Failed to load queue: ${esc(e.message)}</td></tr>`;
+  }
+}
+$("triageBody").addEventListener("click", e => {
+  const b = e.target.closest(".assign-btn"); if (b) openModal(b.dataset.id);
+});
+
+async function openModal(id) {
+  currentClaimId = id;
+  $("modalClaim").textContent = `#${id}`;
+  $("modalErr").classList.add("hidden");
+  let inv = FALLBACK_INVESTIGATORS;
+  try {
+    const d = listOf(await api("/api/investigators"));
+    if (d.length) inv = d.map(i => typeof i === "number" ? {id: i, name: `Investigator ${i}`} : {id: parseStrictInt(pick(i, "id", "investigator_id")), name: pick(i, "name", "full_name") || `Investigator ${pick(i, "id", "investigator_id")}`});
+  } catch (_) {}
+  $("investigatorSelect").innerHTML = inv.map(i => `<option value="${esc(i.id)}">${esc(i.name)} (ID: ${esc(i.id)})</option>`).join("");
+  $("modal").classList.remove("hidden"); $("modal").classList.add("flex");
+}
+function closeModal() { $("modal").classList.add("hidden"); $("modal").classList.remove("flex"); }
+$("modal").addEventListener("click", e => { if (e.target === $("modal")) closeModal(); });
+
+async function confirmAssign() {
+  const btn = $("assignBtn"); btn.disabled = true;
+  try {
+    const payload = {
+      claim_id: parseStrictInt(currentClaimId),
+      investigator_id: parseStrictInt($("investigatorSelect").value)
+    };
+    try {
+      await api("/api/investigations/assign", {method: "POST", body: JSON.stringify(payload)});
+    } catch (_) {
+      await api("/api/claims/assign", {method: "POST", body: JSON.stringify(payload)});
+    }
+    closeModal();
+    showAlert("success", `Claim <b>#${esc(currentClaimId)}</b> assigned to investigator.`);
+    loadTriage();
+  } catch (e) {
+    $("modalErr").textContent = e.message; $("modalErr").classList.remove("hidden");
+  } finally { btn.disabled = false; }
+}
+
+/* ---------- investigation ---------- */
+async function loadInvest() {
+  const box = $("investList");
+  try {
+    let rows = [];
+    try {
+      rows = listOf(await api("/api/investigations/pending"));
+    } catch (_) {
+      rows = listOf(await api("/api/claims?status=UNDER_INVESTIGATION"));
+    }
+
+    box.innerHTML = rows.length ? rows.map(c => {
+      const id = pick(c, "claim_id", "id");
+      return `<div class="bg-white rounded-lg shadow-sm border p-4">
+        <div class="flex justify-between items-start">
+          <div><div class="font-mono font-semibold">Claim #${esc(id)}</div>
+          <div class="text-sm text-slate-500">Customer: ${esc(pick(c, "customer_name", "customer_id", "customer"))}</div></div>
+          <div class="text-lg font-bold">${money(pick(c, "claim_amount", "amount"))}</div>
+        </div>
+        <div class="text-sm mt-2 text-slate-600">Investigator: <b>${esc(pick(c, "investigator_name", "investigator", "assigned_to", "investigator_id") ?? "Pending Assignment")}</b></div>
+        ${pick(c, "description") ? `<p class="text-sm mt-1 text-slate-500">${esc(pick(c, "description"))}</p>` : ""}
+        <button data-id="${esc(id)}" class="approve-btn mt-3 bg-green-600 hover:bg-green-700 text-white text-sm px-4 py-1.5 rounded flex items-center gap-1"><i data-lucide="check" class="w-4 h-4"></i>Approve Claim</button>
+      </div>`;
+    }).join("") : `<p class="text-slate-400">No claims currently under investigation.</p>`;
+    icons();
+  } catch (e) {
+    box.innerHTML = `<p class="text-red-600">Failed to load claims: ${esc(e.message)}</p>`;
+  }
+}
+$("investList").addEventListener("click", async e => {
+  const b = e.target.closest(".approve-btn"); if (!b) return;
+  b.disabled = true; b.classList.add("opacity-60");
+  try {
+    await api("/api/claims/approve", {method: "POST", body: JSON.stringify({claim_id: parseStrictInt(b.dataset.id)})});
+    showAlert("success", `Claim <b>#${esc(b.dataset.id)}</b> approved successfully.`);
+    loadInvest();
+  } catch (err) {
+    showAlert("error", `<b>Approval blocked for Claim #${esc(b.dataset.id)}:</b> ${esc(err.message)}`);
+    b.disabled = false; b.classList.remove("opacity-60");
+  }
+});
+
+/* ---------- init ---------- */
+setTab("overview");
+checkHealth();
+setInterval(checkHealth, 30000);
+icons();
+</script>
+</body>
+</html>
